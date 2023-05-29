@@ -1,0 +1,15 @@
+{% macro kafka_cte_multiple_keys(table_schema, table_name, pk, pk_2) -%}
+
+with cte as (
+  select 
+    record_metadata, 
+    record_content,
+    row_updated_at,
+    row_number() over (partition by record_metadata:key:{{ pk }}, record_metadata:key:{{ pk_2 }}  order by record_metadata:CreateTime desc, record_metadata:offset desc) as row_number
+  from {{ source(table_schema, table_name) }}
+
+  {% if is_incremental() %}
+  where row_updated_at >= (select max(row_updated_at) from {{this}})
+  {% endif %}
+)
+{%- endmacro %}
